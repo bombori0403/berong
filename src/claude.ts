@@ -252,10 +252,17 @@ export async function askBerong(
         ],
       };
     }
-    return {
-      role: m.role,
-      content: m.imageBase64 ? `[사진을 보냈음] ${m.text}` : m.text,
-    };
+    // 긴 대화 파일도 최근 4개 메시지 안의 것만 전체 내용을 전송
+    if (m.fileText && isRecentEnough) {
+      return {
+        role: m.role,
+        content: `${m.text}\n\n[첨부된 대화 파일: ${m.fileName ?? '파일'}]\n${m.fileText}`,
+      };
+    }
+    let text = m.text;
+    if (m.imageBase64) text = `[사진을 보냈음] ${text}`;
+    if (m.fileText) text = `[대화 파일을 보냈음: ${m.fileName ?? ''}] ${text}`;
+    return { role: m.role, content: text };
   });
 
   let dataChanged = false;

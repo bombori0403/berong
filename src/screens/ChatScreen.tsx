@@ -1,3 +1,5 @@
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as Speech from 'expo-speech';
@@ -89,18 +91,18 @@ export default function ChatScreen({
     } catch {}
   };
 
-  /** 공용 전송 로직: 손으로 친 메시지도, 브리핑 자동 요청도 이리로 */
+  /** 공용 전송 로직: 손으로 친 메시지, 사진/파일 첨부, 브리핑 자동 요청 모두 이리로 */
   const sendMessage = async (
     text: string,
-    imageBase64: string | null,
-    base: ChatMessage[]
+    base: ChatMessage[],
+    extras?: { imageBase64?: string; fileText?: string; fileName?: string }
   ) => {
     const userMsg: ChatMessage = {
       id: newId(),
       role: 'user',
       text,
       ts: Date.now(),
-      ...(imageBase64 ? { imageBase64 } : {}),
+      ...(extras ?? {}),
     };
     const next = [...base.filter((m) => m.id !== 'welcome'), userMsg];
     setMessages(next);
@@ -151,7 +153,11 @@ export default function ChatScreen({
       stopListening();
       setListening(false);
     }
-    await sendMessage(text || '이 사진을 분석해줘.', image, messagesRef.current);
+    await sendMessage(
+      text || '이 사진을 분석해줘.',
+      messagesRef.current,
+      image ? { imageBase64: image } : undefined
+    );
   };
 
   /** 아침 브리핑: 켜져 있고, 오늘 아직 안 했고, 설정 시각이 지났으면 자동 실행 */
@@ -166,7 +172,7 @@ export default function ChatScreen({
       if (isNaN(h) || now.getHours() * 60 + now.getMinutes() < h * 60 + (m || 0))
         return;
       await setLastBriefingDate(todayString());
-      await sendMessage('[아침 브리핑] 오늘 브리핑 부탁해!', null, saved);
+      await sendMessage('[아침 브리핑] 오늘 브리핑 부탁해!', saved);
     } catch {}
   };
 
@@ -208,10 +214,43 @@ export default function ChatScreen({
     }
   };
 
+  /** 카톡 "대화 내용 내보내기"로 만든 .txt 파일을 읽어서 바로 분석 요청 */
+  const attachChatFile = async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({
+        type: ['text/plain', 'text/*'],
+        copyToCacheDirectory: true,
+      });
+      if (picked.canceled || !picked.assets?.[0]?.uri) return;
+      const asset = picked.assets[0];
+      const file = new File(asset.uri);
+      let content = await file.text();
+      if (!content.trim()) {
+        Alert.alert('베롱이', '파일이 비어 있어요.');
+        return;
+      }
+      // 너무 긴 대화는 최근 내용 위주로 (약 15만 자까지)
+      const LIMIT = 150_000;
+      let note = '';
+      if (content.length > LIMIT) {
+        content = content.slice(-LIMIT);
+        note = ' (대화가 아주 길어서 최근 부분만 읽었어요)';
+      }
+      await sendMessage(
+        `이 대화 파일을 분석해서 중요한 내용을 정리해줘. 약속/일정/할 일이 있으면 등록도 제안해줘.${note}`,
+        messagesRef.current,
+        { fileText: content, fileName: asset.name ?? '대화.txt' }
+      );
+    } catch (e: any) {
+      Alert.alert('베롱이', `파일을 읽지 못했어요: ${e?.message ?? e}`);
+    }
+  };
+
   const onCameraButton = () => {
-    Alert.alert('사진 보내기', '베롱이에게 보여줄 사진을 고르세요', [
+    Alert.alert('베롱이에게 보여주기', '무엇을 보여줄까요?', [
       { text: '📷 카메라로 찍기', onPress: () => attachImage(true) },
-      { text: '🖼️ 앨범에서 고르기', onPress: () => attachImage(false) },
+      { text: '🖼️ 앨범에서 고르기 (캡처 등)', onPress: () => attachImage(false) },
+      { text: '📄 카톡 대화 파일(.txt)', onPress: attachChatFile },
       { text: '취소', style: 'cancel' },
     ]);
   };
@@ -273,6 +312,12 @@ export default function ChatScreen({
                   style={styles.bubbleImage}
                   resizeMode="cover"
                 />
+              )}
+              {item.fileName && (
+                <Text style={styles.fileChip}>
+                  📄 {item.fileName}
+                  {item.fileText ? ` (${item.fileText.length.toLocaleString()}자)` : ''}
+                </Text>
               )}
               {!!item.text && <Text style={styles.bubbleText}>{item.text}</Text>}
             </View>
@@ -356,6 +401,16 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
   bubbleText: { color: colors.text, fontSize: 16, lineHeight: 22 },
+  fileChip: {
+    color: colors.text,
+    fontSize: 13,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
   bubbleImage: {
     width: 200,
     height: 200,

@@ -4,6 +4,8 @@ export type ChatMessage = {
   text: string;
   ts: number; // epoch ms
   imageBase64?: string; // 사용자가 보낸 사진 (JPEG, base64)
+  fileText?: string; // 첨부한 텍스트 파일(카톡 내보내기 등)의 내용
+  fileName?: string; // 첨부 파일 이름 (표시용)
 };
 
 export type RepeatType = 'none' | 'daily' | 'weekly';
