@@ -36,7 +36,13 @@ const TOOLS = [
         notify_minutes_before: {
           type: 'number',
           description:
-            '몇 분 전에 알림을 보낼지. 기본 30. 알림이 필요 없으면 생략하지 말고 사용자 요청에 맞게 지정.',
+            '몇 분 전에 알림을 보낼지. 기본 30. 알림이 필요 없으면 생략하지 말고 사용자 요청에 맞게 지정. 반복 일정에서 정각에 울리게 하려면 0.',
+        },
+        repeat: {
+          type: 'string',
+          enum: ['none', 'daily', 'weekly'],
+          description:
+            '반복 여부. "매일" 요청이면 daily, "매주 X요일" 요청이면 weekly (datetime을 해당 요일의 가장 가까운 날짜로 지정). 기본 none.',
         },
         memo: { type: 'string', description: '부가 메모 (선택)' },
       },

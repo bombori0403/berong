@@ -4,6 +4,7 @@ import { formatDateTime, parseDateTimeInput, toLocalISO } from './dates';
 import {
   cancelLocalNotification,
   scheduleLocalNotification,
+  scheduleRepeatingLocalNotification,
 } from './notifications';
 import {
   loadMemos,
@@ -21,6 +22,7 @@ function scheduleBrief(s: Schedule) {
     id: s.id,
     title: s.title,
     datetime: formatDateTime(s.datetime),
+    repeat: s.repeat && s.repeat !== 'none' ? s.repeat : undefined,
     done: s.done,
     notifyMinutesBefore: s.notifyMinutesBefore,
     memo: s.memo || undefined,
@@ -34,15 +36,33 @@ function memoBrief(m: Memo) {
 async function setScheduleNotification(s: Schedule): Promise<Schedule> {
   await cancelLocalNotification(s.notificationId);
   s.notificationId = null;
-  if (s.notifyMinutesBefore !== null && !s.done) {
-    const fireAt = new Date(
-      new Date(s.datetime).getTime() - s.notifyMinutesBefore * 60_000
-    );
+  if (s.done) return s;
+
+  const repeat = s.repeat ?? 'none';
+  // 반복 일정은 알림이 꺼져 있어도 기준 시각에 울리는 게 자연스럽다
+  const minutesBefore =
+    s.notifyMinutesBefore !== null ? s.notifyMinutesBefore : repeat !== 'none' ? 0 : null;
+  if (minutesBefore === null) return s;
+
+  const fireAt = new Date(
+    new Date(s.datetime).getTime() - minutesBefore * 60_000
+  );
+  const body =
+    minutesBefore === 0
+      ? '지금 할 시간이에요!'
+      : `${minutesBefore}분 뒤 일정이에요. 미리 준비하세요!`;
+
+  if (repeat === 'none') {
     s.notificationId = await scheduleLocalNotification(
       `⏰ ${s.title}`,
-      s.notifyMinutesBefore === 0
-        ? '지금 할 시간이에요!'
-        : `${s.notifyMinutesBefore}분 뒤 일정이에요. 미리 준비하세요!`,
+      body,
+      fireAt
+    );
+  } else {
+    s.notificationId = await scheduleRepeatingLocalNotification(
+      `🔁 ${s.title}`,
+      body,
+      repeat,
       fireAt
     );
   }
@@ -74,6 +94,7 @@ export async function runTool(
             Math.abs(new Date(s.datetime).getTime() - when.getTime()) <
               30 * 60_000
         );
+        const repeatInput = String(input.repeat ?? 'none');
         let item: Schedule = {
           id: newId(),
           title: String(input.title ?? '제목 없음'),
@@ -86,6 +107,10 @@ export async function runTool(
           memo: String(input.memo ?? ''),
           done: false,
           createdAt: Date.now(),
+          repeat:
+            repeatInput === 'daily' || repeatInput === 'weekly'
+              ? repeatInput
+              : 'none',
         };
         item = await setScheduleNotification(item);
         schedules.push(item);

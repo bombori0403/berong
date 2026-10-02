@@ -9,7 +9,12 @@ import {
   View,
 } from 'react-native';
 import { setScheduleNotification } from '../agentTools';
-import { formatDateTime, parseDateTimeInput, toLocalISO } from '../dates';
+import {
+  formatDateTime,
+  parseDateTimeInput,
+  toLocalISO,
+  weekdayName,
+} from '../dates';
 import { cancelLocalNotification } from '../notifications';
 import { loadSchedules, newId, saveSchedules } from '../storage';
 import { colors, spacing } from '../theme';
@@ -99,8 +104,10 @@ export default function ScheduleScreen({ refreshKey }: { refreshKey: number }) {
     ]);
   };
 
+  const isRepeating = (s: Schedule) => s.repeat === 'daily' || s.repeat === 'weekly';
+
   const isPast = (s: Schedule) =>
-    new Date(s.datetime).getTime() < Date.now() && !s.done;
+    !isRepeating(s) && new Date(s.datetime).getTime() < Date.now() && !s.done;
 
   return (
     <View style={styles.container}>
@@ -171,7 +178,13 @@ export default function ScheduleScreen({ refreshKey }: { refreshKey: number }) {
                 {item.title}
               </Text>
               <Text style={[styles.cardTime, isPast(item) && styles.pastTime]}>
-                {formatDateTime(item.datetime)}
+                {isRepeating(item)
+                  ? `🔁 ${
+                      item.repeat === 'daily'
+                        ? '매일'
+                        : `매주 ${weekdayName(item.datetime)}요일`
+                    } ${formatDateTime(item.datetime).split(' ').slice(-2).join(' ')}`
+                  : formatDateTime(item.datetime)}
                 {isPast(item) ? ' · 지남' : ''}
               </Text>
               {item.notifyMinutesBefore !== null && !item.done && (

@@ -45,6 +45,12 @@ export function parseDateTimeInput(input: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+/** ISO 시각의 요일 이름 ("금" 등) */
+export function weekdayName(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? '' : DAY_NAMES[d.getDay()];
+}
+
 /** 현재 시각을 베롱이에게 알려줄 문자열로 */
 export function nowDescription(): string {
   const d = new Date();

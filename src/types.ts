@@ -5,15 +5,18 @@ export type ChatMessage = {
   ts: number; // epoch ms
 };
 
+export type RepeatType = 'none' | 'daily' | 'weekly';
+
 export type Schedule = {
   id: string;
   title: string;
-  datetime: string; // ISO 8601, 기기 로컬 시간 기준
+  datetime: string; // ISO 8601, 기기 로컬 시간 기준 (반복 일정이면 기준 시각)
   notifyMinutesBefore: number | null; // null이면 알림 없음
   notificationId: string | null; // 예약된 로컬 알림 ID
   memo: string;
   done: boolean;
   createdAt: number;
+  repeat?: RepeatType; // 기존 데이터 호환을 위해 optional (없으면 'none')
 };
 
 export type Memo = {

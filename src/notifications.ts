@@ -46,6 +46,41 @@ export async function scheduleLocalNotification(
   }
 }
 
+/**
+ * 매일/매주 반복되는 로컬 알림 예약.
+ * weekly면 fireDate의 요일, 둘 다 fireDate의 시:분에 맞춰 반복된다.
+ */
+export async function scheduleRepeatingLocalNotification(
+  title: string,
+  body: string,
+  repeat: 'daily' | 'weekly',
+  fireDate: Date
+): Promise<string | null> {
+  try {
+    const ok = await ensureNotificationPermission();
+    if (!ok) return null;
+    const trigger =
+      repeat === 'daily'
+        ? {
+            type: Notifications.SchedulableTriggerInputTypes.DAILY as const,
+            hour: fireDate.getHours(),
+            minute: fireDate.getMinutes(),
+          }
+        : {
+            type: Notifications.SchedulableTriggerInputTypes.WEEKLY as const,
+            weekday: fireDate.getDay() + 1, // 1 = 일요일
+            hour: fireDate.getHours(),
+            minute: fireDate.getMinutes(),
+          };
+    return await Notifications.scheduleNotificationAsync({
+      content: { title, body, sound: true },
+      trigger,
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function cancelLocalNotification(id: string | null): Promise<void> {
   if (!id) return;
   try {
