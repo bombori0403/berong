@@ -1,13 +1,18 @@
 {
   "expo": {
-    "name": "berong",
+    "name": "Berong",
     "slug": "berong",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#121318",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bombori.berong",
+      "infoPlist": {
+        "CFBundleDisplayName": "베롱이"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,6 +25,10 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-audio"
+    ]
   }
 }
