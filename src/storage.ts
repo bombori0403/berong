@@ -49,7 +49,25 @@ const DEFAULT_SETTINGS: Settings = {
   userName: '',
   voiceReply: true,
   homeArea: '',
+  briefingEnabled: false,
+  briefingTime: '08:00',
+  briefingNotificationId: null,
 };
+
+// ---------- 아침 브리핑: 오늘 이미 했는지 ----------
+const BRIEFING_DATE_KEY = 'berong.lastBriefingDate.v1';
+
+export async function getLastBriefingDate(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(BRIEFING_DATE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function setLastBriefingDate(date: string): Promise<void> {
+  await AsyncStorage.setItem(BRIEFING_DATE_KEY, date);
+}
 
 export async function loadSettings(): Promise<Settings> {
   try {

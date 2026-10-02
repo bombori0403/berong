@@ -12,6 +12,10 @@ import {
 import * as Speech from 'expo-speech';
 import { testApiConnection } from '../claude';
 import {
+  cancelLocalNotification,
+  scheduleRepeatingLocalNotification,
+} from '../notifications';
+import {
   clearChat,
   getApiKey,
   loadSettings,
@@ -42,7 +46,11 @@ export default function SettingsScreen() {
     userName: '',
     voiceReply: true,
     homeArea: '',
+    briefingEnabled: false,
+    briefingTime: '08:00',
+    briefingNotificationId: null,
   });
+  const [briefTime, setBriefTime] = useState('08:00');
   const [testing, setTesting] = useState(false);
 
   const runTest = async () => {
@@ -57,8 +65,54 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     getApiKey().then((k) => setHasKey(!!k));
-    loadSettings().then(setSettings);
+    loadSettings().then((s) => {
+      setSettings(s);
+      setBriefTime(s.briefingTime);
+    });
   }, []);
+
+  /** "08:00" 형식 검증 후 Date(오늘 그 시각) 반환, 실패 시 null */
+  const parseBriefTime = (v: string): Date | null => {
+    const m = v.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return null;
+    const h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    if (h > 23 || min > 59) return null;
+    const d = new Date();
+    d.setHours(h, min, 0, 0);
+    return d;
+  };
+
+  /** 브리핑 켜기/끄기/시간 변경 시 반복 알림을 다시 예약 */
+  const applyBriefing = async (enabled: boolean, timeStr: string) => {
+    const current = await loadSettings();
+    await cancelLocalNotification(current.briefingNotificationId);
+    let notifId: string | null = null;
+    if (enabled) {
+      const when = parseBriefTime(timeStr);
+      if (!when) {
+        Alert.alert('베롱이', '시간은 "08:00" 형식(24시간제)으로 입력해주세요.');
+        return;
+      }
+      notifId = await scheduleRepeatingLocalNotification(
+        '🌅 좋은 아침이에요!',
+        '베롱이를 열면 오늘 브리핑을 들려드릴게요.',
+        'daily',
+        when
+      );
+    }
+    const next = {
+      ...current,
+      briefingEnabled: enabled,
+      briefingTime: timeStr,
+      briefingNotificationId: notifId,
+    };
+    setSettings(next);
+    await saveSettings(next);
+    if (enabled) {
+      Alert.alert('베롱이', `매일 ${timeStr}에 아침 브리핑을 준비할게요! 🌅`);
+    }
+  };
 
   const saveKey = async () => {
     try {
@@ -188,6 +242,41 @@ export default function SettingsScreen() {
           trackColor={{ true: colors.accent, false: colors.cardBorder }}
         />
       </View>
+
+      <Text style={styles.sectionTitle}>아침 브리핑</Text>
+      <View style={[styles.card, styles.rowCard]}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.modelLabel}>🌅 매일 아침 브리핑</Text>
+          <Text style={styles.hint}>
+            매일 정해진 시간에 알림이 오고, 베롱이를 열면{'\n'}오늘
+            일정·날씨·챙길 것을 브리핑해줘요.
+          </Text>
+        </View>
+        <Switch
+          value={settings.briefingEnabled}
+          onValueChange={(v) => applyBriefing(v, briefTime)}
+          trackColor={{ true: colors.accent, false: colors.cardBorder }}
+        />
+      </View>
+      {settings.briefingEnabled && (
+        <View style={[styles.card, styles.rowCard, { marginTop: spacing.sm }]}>
+          <Text style={[styles.modelLabel, { flex: 0 }]}>시간</Text>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={briefTime}
+            onChangeText={setBriefTime}
+            placeholder="08:00"
+            placeholderTextColor={colors.subText}
+            keyboardType="numbers-and-punctuation"
+          />
+          <TouchableOpacity
+            style={[styles.saveBtn, { paddingHorizontal: spacing.lg, paddingVertical: 10 }]}
+            onPress={() => applyBriefing(true, briefTime)}
+          >
+            <Text style={styles.saveBtnText}>적용</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <Text style={styles.sectionTitle}>내 이름 (베롱이가 불러줄 호칭)</Text>
       <View style={styles.card}>

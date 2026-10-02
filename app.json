@@ -28,7 +28,21 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "베롱이가 음성으로 대화하기 위해 마이크를 사용합니다.",
+          "speechRecognitionPermission": "베롱이가 말씀을 알아듣기 위해 음성 인식을 사용합니다."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "사진을 베롱이에게 보여주고 분석하기 위해 앨범에 접근합니다.",
+          "cameraPermission": "사진을 찍어 베롱이에게 보여주기 위해 카메라를 사용합니다."
+        }
+      ]
     ]
   }
 }

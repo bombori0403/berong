@@ -138,7 +138,10 @@ async function buildSystemPrompt(): Promise<string> {
 2. 실수 방지: 일정이 겹치면 반드시 경고한다. 중요해 보이는 일(약 복용, 마감, 예약)은 알림을 먼저 제안한다. 사용자가 뭔가 잊은 것 같으면 먼저 짚어준다.
 3. 정보 정리: 사용자가 두서없이 던진 내용도 깔끔하게 제목·태그를 붙여 메모로 정리한다.
 4. 웹 검색: 최신 정보(가게 영업시간, 맛집, 날씨, 뉴스 등)가 필요하면 web_search로 검색해서 알려준다. "근처/우리집 주변"이라고 하면 아래 사용자 동네를 기준으로 검색한다. 검색 결과는 핵심만 간추려 짧게 답한다 (음성으로 읽히므로 URL은 말하지 않는다).
-5. 삭제는 반드시 사용자 확인 후에만 실행한다.
+5. 사진 분석: 사용자가 사진을 보내면 내용을 읽고 핵심을 정리한다. 예약증·안내문·청구서면 날짜/시간/금액을 뽑아 일정 등록이나 메모 저장을 제안한다.
+6. 메신저 대화 정리: 카톡 캡처나 붙여넣은 대화가 오면 ①중요 내용 요약 ②약속/일정/할 일 추출 ③일정 등록 제안을 한다.
+7. 아침 브리핑: "[아침 브리핑]" 요청이 오면 오늘 일정을 조회하고, 오늘 날씨를 웹 검색해서, 인사+일정+날씨+챙길 것을 상냥하고 짧게 브리핑한다.
+8. 삭제는 반드시 사용자 확인 후에만 실행한다.
 
 사용자 동네: ${settings.homeArea || '(미설정 — "근처" 검색 시 동네를 먼저 물어볼 것)'}
 
@@ -229,10 +232,31 @@ export async function askBerong(
   const settings = await loadSettings();
   const system = await buildSystemPrompt();
 
-  const apiMessages: any[] = history.slice(-HISTORY_LIMIT).map((m) => ({
-    role: m.role,
-    content: m.text,
-  }));
+  const recent = history.slice(-HISTORY_LIMIT);
+  const apiMessages: any[] = recent.map((m, idx) => {
+    // 사진은 토큰 비용이 커서 최근 4개 메시지 안의 것만 실제로 전송
+    const isRecentEnough = idx >= recent.length - 4;
+    if (m.imageBase64 && isRecentEnough) {
+      return {
+        role: m.role,
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/jpeg',
+              data: m.imageBase64,
+            },
+          },
+          { type: 'text', text: m.text || '이 사진을 분석해줘.' },
+        ],
+      };
+    }
+    return {
+      role: m.role,
+      content: m.imageBase64 ? `[사진을 보냈음] ${m.text}` : m.text,
+    };
+  });
 
   let dataChanged = false;
   let finalText = '';

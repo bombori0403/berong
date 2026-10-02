@@ -3,6 +3,7 @@ export type ChatMessage = {
   role: 'user' | 'assistant';
   text: string;
   ts: number; // epoch ms
+  imageBase64?: string; // 사용자가 보낸 사진 (JPEG, base64)
 };
 
 export type RepeatType = 'none' | 'daily' | 'weekly';
@@ -34,4 +35,7 @@ export type Settings = {
   userName: string;
   voiceReply: boolean; // 베롱이가 답변을 음성으로 읽어줄지
   homeArea: string; // "우리집 근처" 검색의 기준 동네 (예: 서울 강남구 역삼동)
+  briefingEnabled: boolean; // 아침 브리핑 켜기
+  briefingTime: string; // "08:00" 형식
+  briefingNotificationId: string | null; // 브리핑 반복 알림 ID
 };
